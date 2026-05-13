@@ -4,7 +4,7 @@
   import { EARTH_RADIUS, latLonToVec3 } from './coords.js';
   import { selection } from './stores.js';
 
-  const { camera } = useThrelte();
+  const { camera, invalidate } = useThrelte();
 
   let visible = $state(false);
   let position = $state([0, 0, 0]);
@@ -30,6 +30,7 @@
     ringScale = 1 + Math.sin(pulse) * 0.25;
     ringOpacity = 0.45 + 0.35 * (1 + Math.cos(pulse)) * 0.5;
     if (ringRef && camera.current) ringRef.lookAt(camera.current.position);
+    invalidate?.();
   });
 </script>
 

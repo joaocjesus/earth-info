@@ -6,7 +6,10 @@
   import { resolutionMode, currentTier } from './stores.js';
   import { selectAt } from './selection.js';
 
-  const { invalidate } = useThrelte();
+  const threlte = useThrelte();
+  const { invalidate } = threlte;
+  const getMaxAnisotropy = () =>
+    threlte.renderer?.capabilities?.getMaxAnisotropy?.() ?? 1;
 
   const material = new MeshPhongMaterial({
     color: new Color(0x223044),
@@ -22,6 +25,11 @@
     loading = true;
     try {
       const tex = await getTexture(tier);
+      const aniso = getMaxAnisotropy();
+      if (tex.anisotropy !== aniso) {
+        tex.anisotropy = aniso;
+        tex.needsUpdate = true;
+      }
       if (material.map && material.map !== tex) material.map.dispose();
       material.map = tex;
       material.color.set(0xffffff);
@@ -47,5 +55,5 @@
 </script>
 
 <T.Mesh onclick={handleClick} {material}>
-  <T.SphereGeometry args={[EARTH_RADIUS, 96, 96]} />
+  <T.SphereGeometry args={[EARTH_RADIUS, 64, 64]} />
 </T.Mesh>
