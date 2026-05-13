@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Earth Info Explorer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #05070d; color: #e6e6e6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    #app { position: relative; width: 100%; height: 100%; }
+    #globe { position: absolute; inset: 0; cursor: grab; }
+    #globe:active { cursor: grabbing; }
+
+    /* Top controls */
+    #controls {
+      position: absolute; top: 16px; left: 16px; right: 16px;
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+      background: rgba(10, 14, 24, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 14px;
+      z-index: 10;
+    }
+    .control-group { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
+    .control-group label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #8b96b3; font-weight: 600;
+    }
+    .control-group select, .control-group input {
+      background: rgba(20, 26, 40, 0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e6e6e6;
+      padding: 9px 11px; border-radius: 8px; font-size: 13px;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .control-group select:focus, .control-group input:focus {
+      border-color: #5e8df0; box-shadow: 0 0 0 3px rgba(94,141,240,0.18);
+    }
+    .control-group.wide { flex: 1; min-width: 260px; }
+    .coord-row { display: flex; gap: 6px; }
+    .coord-row input { flex: 1; min-width: 0; }
+    button.go {
+      background: #2d5cc0; color: white; border: none; border-radius: 8px;
+      padding: 0 16px; font-weight: 600; cursor: pointer;
+      transition: background .15s; font-size: 13px;
+    }
+    button.go:hover { background: #3a6dd6; }
+    button.go:active { background: #244ea8; }
+
+    /* Info card */
+    #info-card {
+      position: absolute; bottom: 16px; left: 16px;
+      width: 320px; max-width: calc(100vw - 32px);
+      background: rgba(10, 14, 24, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 18px 20px 16px;
+      z-index: 10;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
+    }
+    #info-card.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    #info-card .flag { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+    #info-card h2 { font-size: 19px; margin-bottom: 4px; font-weight: 600; }
+    #info-card .coords {
+      font-size: 12px; color: #8b96b3; margin-bottom: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    #info-card .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+    #info-card .facts dt { color: #8b96b3; }
+    #info-card .facts dd { color: #e6e6e6; }
+    #info-card .loading { color: #8b96b3; font-style: italic; font-size: 13px; }
+    #info-card .close {
+      position: absolute; top: 8px; right: 12px; background: none; border: none;
+      color: #8b96b3; cursor: pointer; font-size: 20px; line-height: 1;
+      padding: 4px 6px; border-radius: 6px;
+    }
+    #info-card .close:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    #info-card .err { color: #ff7e7e; font-size: 13px; }
+
+    /* Progress widget */
+    #progress {
+      position: absolute; top: 16px; right: 16px;
+      min-width: 220px; max-width: 280px;
+      background: rgba(10, 14, 24, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; padding: 10px 12px;
+      z-index: 11;
+      opacity: 0; transform: translateY(-4px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+    }
+    #progress.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    #progress.error { border-color: rgba(255,120,120,0.4); }
+    #progress .label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: #b8c2d8; margin-bottom: 6px;
+      font-weight: 500;
+    }
+    #progress .pct { color: #8b96b3; font-family: ui-monospace, monospace; font-size: 11px; }
+    #progress .bar {
+      height: 4px; background: rgba(255,255,255,0.08);
+      border-radius: 2px; overflow: hidden;
+    }
+    #progress .bar > div {
+      height: 100%; background: linear-gradient(90deg, #5e8df0, #7eb0ff);
+      width: 0%; transition: width .15s ease;
+    }
+    #progress.error .bar > div { background: #ff5e5e; }
+    #progress.indeterminate .bar > div {
+      width: 35%;
+      animation: indet 1.2s linear infinite;
+    }
+    @keyframes indet {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(285%); }
+    }
+
+    /* Bottom-right hint */
+    .hint {
+      position: absolute; bottom: 16px; right: 16px;
+      font-size: 11px; color: #5e6a85; z-index: 5;
+      background: rgba(10, 14, 24, 0.5); padding: 6px 10px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .toast {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(20, 26, 40, 0.96);
+      border: 1px solid rgba(255,120,120,0.4);
+      color: #ffb4b4; padding: 12px 18px; border-radius: 10px;
+      font-size: 13px; z-index: 20; opacity: 0;
+      transition: opacity .2s; pointer-events: none;
+      max-width: 80vw; text-align: center;
+    }
+    .toast.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="globe"></div>
+
+    <div id="controls">
+      <div class="control-group">
+        <label for="continent">Continent</label>
+        <select id="continent">
+          <option value="Africa">Africa</option>
+          <option value="Antarctica">Antarctica</option>
+          <option value="Asia">Asia</option>
+          <option value="Europe" selected>Europe</option>
+          <option value="North America">North America</option>
+          <option value="Oceania">Oceania</option>
+          <option value="South America">South America</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="country">Country</label>
+        <select id="country"><option>Loading…</option></select>
+      </div>
+      <div class="control-group">
+        <label for="resolution">Resolution</label>
+        <select id="resolution">
+          <option value="2k" selected>2K — fast (default)</option>
+          <option value="4k">4K — high</option>
+          <option value="8k">8K — ultra</option>
+          <option value="dynamic">Dynamic — adjusts to zoom</option>
+        </select>
+      </div>
+      <div class="control-group wide">
+        <label for="coords">Coordinates</label>
+        <div class="coord-row">
+          <input type="text" id="coords"
+            placeholder="48.8566, 2.3522   or   48°51&apos;N 2°21&apos;E" />
+          <button class="go" id="coords-go">Go</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="progress">
+      <div class="label"><span class="title">Loading…</span><span class="pct">0%</span></div>
+      <div class="bar"><div></div></div>
+    </div>
+
+    <div id="info-card"></div>
+    <div id="toast" class="toast"></div>
+    <div class="hint">Drag to rotate · Scroll to zoom · Click a country</div>
+  </div>
+
+  <!--
+    Using Three.js r146 (last version shipping a UMD build + examples/js globals)
+    so this page works when opened directly from disk (file://) — ES modules and
+    importmaps are blocked by browsers in that context.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    // Sanity check: surface a clear error if the libraries didn't load.
+    if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#05070d;color:#ffb4b4;font-family:sans-serif;padding:24px;text-align:center;z-index:9999;">' +
+        '<div>Three.js failed to load from the CDN.<br>Check your internet connection or content blocker, then reload.</div></div>');
+      throw new Error('Three.js not loaded');
+    }
+
+    /* ====================================================================
+       Constants
+    ==================================================================== */
+    const CONTINENT_CENTROIDS = {
+      'Africa':        { lat:   2, lon:  20 },
+      'Antarctica':    { lat: -82, lon:   0 },
+      'Asia':          { lat:  40, lon:  90 },
+      'Europe':        { lat:  52, lon:  15 },
+      'North America': { lat:  45, lon: -100 },
+      'Oceania':       { lat: -22, lon:  140 },
+      'South America': { lat: -15, lon:  -60 }
+    };
+
+    // Texture tiers — solarsystemscope.com (CC-BY 4.0) for visual consistency.
+    // The 2K tier has a fallback to threejs.org's well-known texture.
+    const TEXTURE_TIERS = {
+      '2k': {
+        label: '2K',
+        size: '2048×1024',
+        urls: [
+          // threejs.org's example texture is well-known to allow CORS; try first.
+          'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+          'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg'
+        ]
+      },
+      '4k': {
+        label: '4K',
+        size: '4096×2048',
+        urls: ['https://www.solarsystemscope.com/textures/download/4k_earth_daymap.jpg']
+      },
+      '8k': {
+        label: '8K',
+        size: '8192×4096',
+        urls: ['https://www.solarsystemscope.com/textures/download/8k_earth_daymap.jpg']
+      }
+    };
+    const TIER_ORDER = ['2k', '4k', '8k'];
+
+    // Cache TTLs (ms)
+    const COUNTRIES_TTL = 7 * 24 * 60 * 60 * 1000;   // 7 days
+    const GEOCODE_TTL   = 30 * 24 * 60 * 60 * 1000;  // 30 days
+
+    /* ====================================================================
+       Scene / renderer
+    ==================================================================== */
+    const container = document.getElementById('globe');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070d);
+
+    const camera = new THREE.PerspectiveCamera(
+      42, window.innerWidth / window.innerHeight, 0.1, 200
+    );
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.appendChild(renderer.domElement);
+
+    // Detect GPU's max texture size so we don't try to upload something too big.
+    const gl = renderer.getContext();
+    const MAX_TEX_SIZE = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
+
+    /* ====================================================================
+       Earth + atmosphere + stars
+    ==================================================================== */
+    const EARTH_RADIUS = 1;
+    const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 96, 96);
+    const earthMat = new THREE.MeshPhongMaterial({
+      color: 0x223044,
+      specular: new THREE.Color(0x222831),
+      shininess: 14
+    });
+    const earth = new THREE.Mesh(earthGeo, earthMat);
+    scene.add(earth);
+
+    const atmGeo = new THREE.SphereGeometry(EARTH_RADIUS * 1.04, 64, 64);
+    const atmMat = new THREE.ShaderMaterial({
+      transparent: true,
+      side: THREE.BackSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float d = dot(vNormal, vec3(0.0, 0.0, 1.0));
+          float intensity = pow(max(0.55 - d, 0.0), 2.4);
+          gl_FragColor = vec4(0.35, 0.6, 1.0, 1.0) * intensity;
+        }`
+    });
+    scene.add(new THREE.Mesh(atmGeo, atmMat));
+
+    const starsGeo = new THREE.BufferGeometry();
+    const starCount = 1400;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const r = 50 + Math.random() * 30;
+      const theta = Math.acos(2 * Math.random() - 1);
+      const phi = Math.random() * Math.PI * 2;
+      starPositions[i * 3]     = r * Math.sin(theta) * Math.cos(phi);
+      starPositions[i * 3 + 1] = r * Math.cos(theta);
+      starPositions[i * 3 + 2] = r * Math.sin(theta) * Math.sin(phi);
+    }
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    scene.add(new THREE.Points(
+      starsGeo,
+      new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, sizeAttenuation: true })
+    ));
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(5, 3, 5);
+    scene.add(sun);
+
+    // Click marker
+    const markerGeo = new THREE.SphereGeometry(0.014, 16, 16);
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0xff5e5e });
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    marker.visible = false;
+    scene.add(marker);
+    const ringGeo = new THREE.RingGeometry(0.022, 0.032, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xff5e5e, side: THREE.DoubleSide, transparent: true, opacity: 0.8
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.visible = false;
+    scene.add(ring);
+
+    /* ====================================================================
+       OrbitControls
+    ==================================================================== */
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.5;
+    controls.zoomSpeed = 0.7;
+    controls.minDistance = 1.35;
+    controls.maxDistance = 8;
+    controls.enablePan = false;
+
+    /* ====================================================================
+       Lat/Lon helpers (Greenwich at +X)
+    ==================================================================== */
+    const DEG = Math.PI / 180;
+    function latLonToVec3(lat, lon, r = EARTH_RADIUS) {
+      const φ = lat * DEG;
+      const λ = lon * DEG;
+      return new THREE.Vector3(
+        r * Math.cos(φ) * Math.cos(λ),
+        r * Math.sin(φ),
+        -r * Math.cos(φ) * Math.sin(λ)
+      );
+    }
+    function vec3ToLatLon(v) {
+      const r = v.length();
+      const lat = Math.asin(v.y / r) / DEG;
+      const lon = Math.atan2(-v.z, v.x) / DEG;
+      return { lat, lon };
+    }
+
+    /* ====================================================================
+       Camera positioning with smooth slerp
+    ==================================================================== */
+    let activeAnim = null;
+    function positionCameraTo(lat, lon, distance = 3.0, animate = true) {
+      const targetDir = latLonToVec3(lat, lon).normalize();
+      if (!animate) {
+        camera.position.copy(targetDir.multiplyScalar(distance));
+        controls.update();
+        return;
+      }
+      const startDir = camera.position.clone().normalize();
+      const startLen = camera.position.length();
+      const startTime = performance.now();
+      const duration = 850;
+      const dot = THREE.MathUtils.clamp(startDir.dot(targetDir), -1, 1);
+      const theta = Math.acos(dot);
+      const sinTheta = Math.sin(theta);
+
+      const animId = Symbol();
+      activeAnim = animId;
+      function step() {
+        if (activeAnim !== animId) return;
+        const t = Math.min(1, (performance.now() - startTime) / duration);
+        const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        let dir;
+        if (theta < 1e-4) {
+          dir = targetDir.clone();
+        } else {
+          const a = Math.sin((1 - e) * theta) / sinTheta;
+          const b = Math.sin(e * theta) / sinTheta;
+          dir = startDir.clone().multiplyScalar(a).add(targetDir.clone().multiplyScalar(b));
+        }
+        const len = startLen * (1 - e) + distance * e;
+        camera.position.copy(dir.multiplyScalar(len));
+        controls.update();
+        if (t < 1) requestAnimationFrame(step);
+        else activeAnim = null;
+      }
+      step();
+    }
+
+    positionCameraTo(CONTINENT_CENTROIDS['Europe'].lat,
+                     CONTINENT_CENTROIDS['Europe'].lon, 3.0, false);
+
+    /* ====================================================================
+       Render loop (and dynamic-resolution polling)
+    ==================================================================== */
+    let ringPulse = 0;
+    function render() {
+      requestAnimationFrame(render);
+      controls.update();
+      if (ring.visible) {
+        ringPulse += 0.04;
+        const s = 1 + Math.sin(ringPulse) * 0.25;
+        ring.scale.set(s, s, s);
+        ringMat.opacity = 0.45 + 0.35 * (1 + Math.cos(ringPulse)) * 0.5;
+        ring.lookAt(camera.position);
+      }
+      maybeDynamicUpgrade();
+      renderer.render(scene, camera);
+    }
+    // Note: render() is started at the very end of this script, once all
+    // late-declared bindings it depends on (resolutionMode, currentTier, etc.)
+    // have been initialized.
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ====================================================================
+       Progress widget
+    ==================================================================== */
+    const progressEl = document.getElementById('progress');
+    const progressTitleEl = progressEl.querySelector('.title');
+    const progressPctEl = progressEl.querySelector('.pct');
+    const progressBarEl = progressEl.querySelector('.bar > div');
+    let progressHideTimer = null;
+    function showProgress(title, pct = null) {
+      clearTimeout(progressHideTimer);
+      progressEl.classList.remove('error');
+      progressEl.classList.add('visible');
+      progressTitleEl.textContent = title;
+      if (pct == null) {
+        progressEl.classList.add('indeterminate');
+        progressPctEl.textContent = '';
+        progressBarEl.style.width = '';
+      } else {
+        progressEl.classList.remove('indeterminate');
+        progressPctEl.textContent = `${Math.round(pct * 100)}%`;
+        progressBarEl.style.width = `${(pct * 100).toFixed(1)}%`;
+      }
+    }
+    function setProgress(pct) {
+      progressEl.classList.remove('indeterminate');
+      progressPctEl.textContent = `${Math.round(pct * 100)}%`;
+      progressBarEl.style.width = `${(pct * 100).toFixed(1)}%`;
+    }
+    function hideProgress(delay = 400) {
+      clearTimeout(progressHideTimer);
+      progressHideTimer = setTimeout(() => {
+        progressEl.classList.remove('visible', 'indeterminate', 'error');
+      }, delay);
+    }
+    function progressError(msg) {
+      progressEl.classList.add('error');
+      progressEl.classList.remove('indeterminate');
+      progressTitleEl.textContent = msg;
+      progressPctEl.textContent = '';
+      progressBarEl.style.width = '100%';
+      hideProgress(2500);
+    }
+
+    /* ====================================================================
+       Texture loading (tiered, cached, with progress)
+    ==================================================================== */
+    const textureCache = new Map();   // tier -> Promise<Texture>
+    const loadedTiers = new Set();    // tiers that finished loading this session
+    let currentTier = null;
+
+    function loadTextureWithProgress(url, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const blob = xhr.response;
+            const objectUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const tex = new THREE.Texture(img);
+              tex.encoding = THREE.sRGBEncoding;
+              tex.needsUpdate = true;
+              tex.anisotropy = renderer.capabilities.getMaxAnisotropy?.() || 4;
+              URL.revokeObjectURL(objectUrl);
+              resolve(tex);
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              reject(new Error(`Image decode failed for ${url}`));
+            };
+            img.src = objectUrl;
+          } else {
+            reject(new Error(`HTTP ${xhr.status} for ${url}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error(`Network error loading ${url}`));
+        xhr.send();
+      });
+    }
+
+    async function getTexture(tier) {
+      if (textureCache.has(tier)) return textureCache.get(tier);
+      const cfg = TEXTURE_TIERS[tier];
+      if (!cfg) throw new Error(`Unknown tier ${tier}`);
+
+      const promise = (async () => {
+        let lastErr;
+        for (const url of cfg.urls) {
+          try {
+            showProgress(`Loading ${cfg.label} texture…`, 0);
+            const tex = await loadTextureWithProgress(url, (p) => setProgress(p));
+            loadedTiers.add(tier);
+            hideProgress(200);
+            return tex;
+          } catch (err) {
+            lastErr = err;
+            console.warn('texture URL failed', url, err);
+          }
+        }
+        progressError(`Failed to load ${cfg.label}`);
+        throw lastErr || new Error('all sources failed');
+      })();
+
+      textureCache.set(tier, promise);
+      // If it fails, allow retry by removing from cache.
+      promise.catch(() => textureCache.delete(tier));
+      return promise;
+    }
+
+    async function applyTier(tier) {
+      // Skip tiers the GPU can't handle.
+      const width = parseInt(TEXTURE_TIERS[tier].size.split('×')[0], 10);
+      if (width > MAX_TEX_SIZE) {
+        showToast(`GPU max texture size is ${MAX_TEX_SIZE}px. ${TEXTURE_TIERS[tier].label} (${width}px) won't load — staying at the highest supported tier.`);
+        return false;
+      }
+      try {
+        const tex = await getTexture(tier);
+        if (currentTier === tier) return true;
+        const old = earthMat.map;
+        earthMat.map = tex;
+        earthMat.needsUpdate = true;
+        // Dispose the old texture only if it isn't shared elsewhere.
+        if (old && old !== tex && !isTextureCached(old)) old.dispose?.();
+        currentTier = tier;
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+    function isTextureCached(tex) {
+      for (const p of textureCache.values()) {
+        // p is a Promise; check fulfilled value via .then is async. Skip — cheap conservative check.
+        if (p && p._cachedTex === tex) return true;
+      }
+      return false;
+    }
+
+    /* ====================================================================
+       Resolution mode (manual vs. dynamic)
+    ==================================================================== */
+    let resolutionMode = '2k';   // '2k' | '4k' | '8k' | 'dynamic'
+    let dynamicCurrentTarget = '2k';
+
+    function tierForDistance(d) {
+      if (d > 3.0) return '2k';
+      if (d > 1.8) return '4k';
+      return '8k';
+    }
+    function tierIndex(t) { return TIER_ORDER.indexOf(t); }
+
+    let lastDynCheck = 0;
+    function maybeDynamicUpgrade() {
+      if (resolutionMode !== 'dynamic') return;
+      const now = performance.now();
+      if (now - lastDynCheck < 250) return; // throttle
+      lastDynCheck = now;
+      const d = camera.position.length();
+      const desired = tierForDistance(d);
+      // Only upgrade to a higher tier than what's currently displayed.
+      if (tierIndex(desired) > tierIndex(currentTier)) {
+        dynamicCurrentTarget = desired;
+        applyTier(desired);
+      }
+    }
+
+    const resolutionEl = document.getElementById('resolution');
+    resolutionEl.addEventListener('change', async () => {
+      const val = resolutionEl.value;
+      resolutionMode = val;
+      if (val === 'dynamic') {
+        // Apply tier matching current distance (only upgrade, never downgrade).
+        const d = camera.position.length();
+        const desired = tierForDistance(d);
+        if (tierIndex(desired) > tierIndex(currentTier)) {
+          applyTier(desired);
+        }
+      } else {
+        applyTier(val);
+      }
+    });
+
+    // Initial load: 2K (default)
+    applyTier('2k');
+
+    /* ====================================================================
+       Click → coordinates
+    ==================================================================== */
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let pointerDown = null;
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDown = { x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (!pointerDown) return;
+      const dx = Math.abs(e.clientX - pointerDown.x);
+      const dy = Math.abs(e.clientY - pointerDown.y);
+      const dt = performance.now() - pointerDown.t;
+      pointerDown = null;
+      if (dx > 5 || dy > 5 || dt > 500) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      ndc.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(earth);
+      if (hits.length === 0) return;
+      const point = hits[0].point.clone();
+      const { lat, lon } = vec3ToLatLon(point);
+      placeMarker(point);
+      lookupCoords(lat, lon);
+    });
+
+    function placeMarker(point) {
+      const surfaceOut = point.clone().normalize().multiplyScalar(EARTH_RADIUS * 1.012);
+      marker.position.copy(surfaceOut);
+      ring.position.copy(surfaceOut);
+      marker.visible = true;
+      ring.visible = true;
+      ringPulse = 0;
+    }
+    function placeMarkerLatLon(lat, lon) { placeMarker(latLonToVec3(lat, lon)); }
+    function clearMarker() { marker.visible = false; ring.visible = false; }
+
+    /* ====================================================================
+       Info card
+    ==================================================================== */
+    const card = document.getElementById('info-card');
+    function showCard(html) {
+      card.innerHTML = html + '<button class="close" aria-label="Close">×</button>';
+      card.classList.add('visible');
+      card.querySelector('.close').onclick = () => {
+        card.classList.remove('visible');
+        clearMarker();
+      };
+    }
+    function formatCoords(lat, lon) {
+      const latH = lat >= 0 ? 'N' : 'S';
+      const lonH = lon >= 0 ? 'E' : 'W';
+      return `${Math.abs(lat).toFixed(4)}° ${latH}, ${Math.abs(lon).toFixed(4)}° ${lonH}`;
+    }
+    function fmtNum(n, suffix = '') {
+      if (n == null || isNaN(n)) return '—';
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n) + suffix;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    /* ====================================================================
+       Persistent caches (localStorage)
+    ==================================================================== */
+    function lsGet(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    }
+    function lsSet(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); }
+      catch (err) { console.warn('lsSet failed', key, err); }
+    }
+
+    // ---- Countries cache ----
+    const COUNTRIES_KEY = 'ei_countries_v1';
+    let _countriesPromise = null;
+    function getAllCountries() {
+      if (_countriesPromise) return _countriesPromise;
+      const cached = lsGet(COUNTRIES_KEY);
+      if (cached && cached.ts && Date.now() - cached.ts < COUNTRIES_TTL && Array.isArray(cached.data)) {
+        _countriesPromise = Promise.resolve(cached.data);
+        return _countriesPromise;
+      }
+      _countriesPromise = (async () => {
+        const res = await fetch(
+          'https://restcountries.com/v3.1/all?fields=name,cca2,cca3,capital,population,area,latlng,continents,region,flag'
+        );
+        if (!res.ok) throw new Error(`countries fetch failed: ${res.status}`);
+        const data = await res.json();
+        lsSet(COUNTRIES_KEY, { ts: Date.now(), data });
+        return data;
+      })().catch(err => {
+        _countriesPromise = null;
+        // Fall back to expired cache if there is one.
+        const stale = lsGet(COUNTRIES_KEY);
+        if (stale && Array.isArray(stale.data)) {
+          console.warn('using stale countries cache after fetch failure');
+          _countriesPromise = Promise.resolve(stale.data);
+          return stale.data;
+        }
+        throw err;
+      });
+      return _countriesPromise;
+    }
+    async function getCountryByCode(code) {
+      if (!code) return null;
+      const all = await getAllCountries();
+      return all.find(c => c.cca2 === code || c.cca3 === code) || null;
+    }
+
+    // ---- Reverse-geocode cache (rounded to ~10 km) ----
+    const GEOCODE_KEY = 'ei_geocode_v1';
+    let geocodeCache = lsGet(GEOCODE_KEY) || {};
+    // Drop expired entries on load.
+    {
+      const now = Date.now();
+      let pruned = false;
+      for (const k of Object.keys(geocodeCache)) {
+        if (!geocodeCache[k].ts || now - geocodeCache[k].ts > GEOCODE_TTL) {
+          delete geocodeCache[k]; pruned = true;
+        }
+      }
+      if (pruned) lsSet(GEOCODE_KEY, geocodeCache);
+    }
+    function geocodeKey(lat, lon) {
+      return `${lat.toFixed(1)},${lon.toFixed(1)}`;
+    }
+    let geocodeFlushTimer = null;
+    function scheduleGeocodeFlush() {
+      clearTimeout(geocodeFlushTimer);
+      geocodeFlushTimer = setTimeout(() => lsSet(GEOCODE_KEY, geocodeCache), 500);
+    }
+    async function reverseGeocode(lat, lon) {
+      const key = geocodeKey(lat, lon);
+      const hit = geocodeCache[key];
+      if (hit && hit.ts && Date.now() - hit.ts < GEOCODE_TTL) return hit.data;
+      const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`reverse geocode failed: ${res.status}`);
+      const data = await res.json();
+      geocodeCache[key] = { ts: Date.now(), data };
+      scheduleGeocodeFlush();
+      return data;
+    }
+
+    /* ====================================================================
+       Lookup flow
+    ==================================================================== */
+    async function lookupCoords(lat, lon) {
+      showCard(`
+        <div class="coords">${formatCoords(lat, lon)}</div>
+        <div class="loading">Looking up location…</div>
+      `);
+      try {
+        const geo = await reverseGeocode(lat, lon);
+        if (!geo || !geo.countryCode) {
+          showCard(`
+            <div class="coords">${formatCoords(lat, lon)}</div>
+            <h2>Open ocean</h2>
+            <div style="color:#8b96b3; font-size:13px;">No country at this point.</div>
+          `);
+          return;
+        }
+        const country = await getCountryByCode(geo.countryCode);
+        renderCountryCard(country, { lat, lon, cityHint: geo.city || geo.locality });
+      } catch (err) {
+        showCard(`
+          <div class="coords">${formatCoords(lat, lon)}</div>
+          <div class="err">Couldn't load location info: ${escapeHtml(err.message || err)}</div>
+        `);
+      }
+    }
+    function renderCountryCard(country, opts = {}) {
+      if (!country) { showCard(`<h2>Unknown country</h2>`); return; }
+      const name = country.name?.common || 'Unknown';
+      const flag = country.flag || '';
+      const capital = (country.capital && country.capital[0]) || '—';
+      const pop = country.population;
+      const area = country.area;
+      const density = (pop && area) ? pop / area : null;
+      const region = country.region || '';
+      const lat = opts.lat ?? country.latlng?.[0];
+      const lon = opts.lon ?? country.latlng?.[1];
+      const cityLine = opts.cityHint
+        ? `<div style="font-size:12px;color:#8b96b3;margin-top:-6px;margin-bottom:10px;">${escapeHtml(opts.cityHint)}</div>`
+        : '';
+      showCard(`
+        <div class="flag">${flag}</div>
+        <h2>${escapeHtml(name)}</h2>
+        <div class="coords">${formatCoords(lat, lon)}</div>
+        ${cityLine}
+        <dl class="facts">
+          <dt>Capital</dt><dd>${escapeHtml(capital)}</dd>
+          <dt>Region</dt><dd>${escapeHtml(region || '—')}</dd>
+          <dt>Population</dt><dd>${fmtNum(pop)}</dd>
+          <dt>Area</dt><dd>${fmtNum(area, ' km²')}</dd>
+          <dt>Density</dt><dd>${density != null ? fmtNum(density, ' /km²') : '—'}</dd>
+        </dl>
+      `);
+    }
+
+    /* ====================================================================
+       Continent / country dropdowns
+    ==================================================================== */
+    const continentEl = document.getElementById('continent');
+    const countryEl = document.getElementById('country');
+
+    async function populateCountries(continent) {
+      countryEl.innerHTML = '<option>Loading…</option>';
+      try {
+        const all = await getAllCountries();
+        const filtered = all.filter(c =>
+          Array.isArray(c.continents) && c.continents.includes(continent)
+        );
+        filtered.sort((a, b) => a.name.common.localeCompare(b.name.common));
+        countryEl.innerHTML =
+          '<option value="">— Select a country —</option>' +
+          filtered.map(c =>
+            `<option value="${c.cca2}">${c.flag || ''} ${escapeHtml(c.name.common)}</option>`
+          ).join('');
+      } catch {
+        countryEl.innerHTML = '<option>Failed to load</option>';
+      }
+    }
+
+    continentEl.addEventListener('change', () => {
+      const continent = continentEl.value;
+      const c = CONTINENT_CENTROIDS[continent];
+      if (c) positionCameraTo(c.lat, c.lon, 3.0);
+      populateCountries(continent);
+      clearMarker();
+      card.classList.remove('visible');
+    });
+
+    countryEl.addEventListener('change', async () => {
+      const code = countryEl.value;
+      if (!code) return;
+      const country = await getCountryByCode(code);
+      if (!country) return;
+      const [lat, lon] = country.latlng || [0, 0];
+      positionCameraTo(lat, lon, 2.6);
+      placeMarkerLatLon(lat, lon);
+      renderCountryCard(country, { lat, lon });
+    });
+
+    populateCountries('Europe');
+
+    /* ====================================================================
+       Coordinate input parsing
+    ==================================================================== */
+    function parseCoords(input) {
+      if (!input) return null;
+      const s = input.trim();
+
+      const dec = s.match(
+        /^\s*(-?\d+(?:\.\d+)?)\s*°?\s*[,\s]\s*(-?\d+(?:\.\d+)?)\s*°?\s*$/
+      );
+      if (dec) {
+        const lat = parseFloat(dec[1]);
+        const lon = parseFloat(dec[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return { lat, lon };
+      }
+
+      const dmsRe =
+        /(\d+(?:\.\d+)?)\s*°?\s*(?:(\d+(?:\.\d+)?)\s*[\'’]?\s*)?(?:(\d+(?:\.\d+)?)\s*[\"”]?\s*)?([NSEWnsew])/g;
+      const matches = [...s.matchAll(dmsRe)];
+      if (matches.length >= 2) {
+        const toDec = m => {
+          const deg = parseFloat(m[1]);
+          const min = m[2] ? parseFloat(m[2]) : 0;
+          const sec = m[3] ? parseFloat(m[3]) : 0;
+          const hem = m[4].toUpperCase();
+          let val = deg + min / 60 + sec / 3600;
+          if (hem === 'S' || hem === 'W') val = -val;
+          return { val, hem };
+        };
+        const parts = matches.map(toDec);
+        const latPart = parts.find(p => p.hem === 'N' || p.hem === 'S');
+        const lonPart = parts.find(p => p.hem === 'E' || p.hem === 'W');
+        if (latPart && lonPart) {
+          if (Math.abs(latPart.val) <= 90 && Math.abs(lonPart.val) <= 180)
+            return { lat: latPart.val, lon: lonPart.val };
+        }
+      }
+
+      const gm = s.match(
+        /(-?\d+(?:\.\d+)?)\s*°?\s*([NSns])?\s*[,\s]+\s*(-?\d+(?:\.\d+)?)\s*°?\s*([EWew])?/
+      );
+      if (gm) {
+        let lat = parseFloat(gm[1]);
+        let lon = parseFloat(gm[3]);
+        if (gm[2] && gm[2].toUpperCase() === 'S') lat = -Math.abs(lat);
+        if (gm[2] && gm[2].toUpperCase() === 'N') lat =  Math.abs(lat);
+        if (gm[4] && gm[4].toUpperCase() === 'W') lon = -Math.abs(lon);
+        if (gm[4] && gm[4].toUpperCase() === 'E') lon =  Math.abs(lon);
+        if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return { lat, lon };
+      }
+      return null;
+    }
+
+    document.getElementById('coords-go').addEventListener('click', goCoords);
+    document.getElementById('coords').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') goCoords();
+    });
+    function goCoords() {
+      const input = document.getElementById('coords').value;
+      const parsed = parseCoords(input);
+      if (!parsed) {
+        showToast('Couldn’t parse coordinates. Try: 48.8566, 2.3522  or  48°51′N 2°21′E');
+        return;
+      }
+      const { lat, lon } = parsed;
+      positionCameraTo(lat, lon, 2.5);
+      placeMarkerLatLon(lat, lon);
+      lookupCoords(lat, lon);
+    }
+
+    /* ====================================================================
+       Toast
+    ==================================================================== */
+    const toastEl = document.getElementById('toast');
+    let toastTimer;
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('visible'), 3500);
+    }
+
+    /* ====================================================================
+       Kick off the render loop (deferred so all let-bindings exist first).
+    ==================================================================== */
+    render();
+  </script>
+</body>
+</html>

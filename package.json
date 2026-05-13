@@ -1,0 +1,26 @@
+{
+  "name": "earthinfo",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Interactive 3D Earth explorer with country info",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "svelte": "^5.0.0",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@threlte/core": "^8.0.0",
+    "@threlte/extras": "^9.0.0",
+    "three": "^0.167.0"
+  }
+}
