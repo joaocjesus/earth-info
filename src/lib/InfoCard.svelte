@@ -20,9 +20,22 @@
       <div class="coords">{formatCoords(sel.lat, sel.lon)}</div>
       <div class="loading">Looking up location…</div>
     {:else if sel.status === 'ocean'}
+      {@const o = sel.ocean}
+      <div class="wave">🌊</div>
+      <h2>{o?.name || 'Open ocean'}</h2>
       <div class="coords">{formatCoords(sel.lat, sel.lon)}</div>
-      <h2>Open ocean</h2>
-      <div class="dim">No country at this point.</div>
+      {#if o?.parent}<div class="city">Part of the {o.parent}.</div>
+      {:else if o?.info}<div class="city">{o.info}</div>{/if}
+      {#if o && (o.area || o.avgDepthM || o.maxDepthM)}
+        <dl class="facts">
+          {#if o.area}<dt>Area</dt><dd>{fmtNum(o.area, ' km²')}</dd>{/if}
+          {#if o.avgDepthM}<dt>Avg depth</dt><dd>{fmtNum(o.avgDepthM, ' m')}</dd>{/if}
+          {#if o.maxDepthM}<dt>Max depth</dt><dd>{fmtNum(o.maxDepthM, ' m')}</dd>{/if}
+          {#if o.maxDepthName}<dt>Deepest</dt><dd>{o.maxDepthName}</dd>{/if}
+        </dl>
+      {:else if !o}
+        <div class="dim">No country at this point.</div>
+      {/if}
     {:else if sel.status === 'error'}
       <div class="coords">{formatCoords(sel.lat, sel.lon)}</div>
       <div class="err">Couldn't load location info: {sel.error}</div>
@@ -65,6 +78,7 @@
   }
   .card.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
   .flag { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+  .wave { font-size: 26px; line-height: 1; margin-bottom: 4px; }
   h2 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
   .coords {
     font-size: 12px; color: #8b96b3; margin-bottom: 12px;

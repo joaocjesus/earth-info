@@ -27,6 +27,24 @@ export const currentTier = writable(null);
 /** Toggle for country border overlay. */
 export const showBorders = writable(false);
 
+/** Toggle for ocean boundary overlay. */
+export const showOceanBorders = writable(false);
+
+/** Natural Earth vector detail level used for borders and ocean classification. */
+const SCALE_KEY = 'ei_vector_scale';
+const SCALE_DEFAULT = '110m';
+const SCALE_VALID = new Set(['110m', '50m', '10m']);
+function loadScale() {
+  try {
+    const v = localStorage.getItem(SCALE_KEY);
+    return SCALE_VALID.has(v) ? v : SCALE_DEFAULT;
+  } catch { return SCALE_DEFAULT; }
+}
+export const vectorScale = writable(loadScale());
+vectorScale.subscribe((v) => {
+  try { localStorage.setItem(SCALE_KEY, v); } catch {}
+});
+
 /** UI: texture loader progress. */
 export const progress = writable({ visible: false, title: '', pct: null, error: false });
 let progressHideTimer = null;

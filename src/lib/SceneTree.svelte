@@ -8,6 +8,7 @@
   import Earth from './Earth.svelte';
   import Atmosphere from './Atmosphere.svelte';
   import Borders from './Borders.svelte';
+  import OceanBorders from './OceanBorders.svelte';
   import Stars from './Stars.svelte';
   import Marker from './Marker.svelte';
   import CameraController from './CameraController.svelte';
@@ -36,6 +37,7 @@
 <Stars />
 <Earth />
 <Borders />
+<OceanBorders />
 <Atmosphere />
 <Marker />
 

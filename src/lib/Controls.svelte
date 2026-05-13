@@ -4,7 +4,7 @@
   import { getAllCountries } from './api.js';
   import { parseCoords } from './coords.js';
   import {
-    resolutionMode, moveCamera, showToast, showBorders
+    resolutionMode, moveCamera, showToast, showBorders, showOceanBorders
   } from './stores.js';
   import { selectAt, selectCountryByCode, clearSelection } from './selection.js';
 
@@ -15,6 +15,7 @@
   let countries = $state([]);
   let loading = $state(true);
   let borders = $state(false);
+  let oceanBorders = $state(false);
 
   async function loadCountries(forContinent) {
     loading = true;
@@ -53,6 +54,10 @@
 
   function onBordersChange() {
     showBorders.set(borders);
+  }
+
+  function onOceanBordersChange() {
+    showOceanBorders.set(oceanBorders);
   }
 
   function goCoords() {
@@ -108,6 +113,15 @@
     <label class="toggle" for="borders">
       <input id="borders" type="checkbox" bind:checked={borders} onchange={onBordersChange} />
       <span>Country borders</span>
+    </label>
+    <label class="toggle" for="ocean-borders">
+      <input
+        id="ocean-borders"
+        type="checkbox"
+        bind:checked={oceanBorders}
+        onchange={onOceanBordersChange}
+      />
+      <span>Ocean borders</span>
     </label>
   </div>
 

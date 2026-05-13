@@ -9,7 +9,15 @@
 
 {#if open}
   <div class="backdrop" onclick={close} role="presentation">
-    <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Credits">
+    <div
+      class="dialog"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Credits"
+      tabindex="-1"
+    >
       <header>
         <h2>Credits</h2>
         <button class="x" onclick={close} aria-label="Close">×</button>
@@ -34,11 +42,12 @@
           </li>
         </ul>
 
-        <h3>Country borders</h3>
+        <h3>Country borders & ocean polygons</h3>
         <ul>
           <li>
             <a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer">Natural Earth</a>
-            (110m admin-0 countries) — public domain.
+            — admin-0 countries and marine polygons (110m / 50m / 10m,
+            selectable in Settings) — public domain.
           </li>
         </ul>
 
