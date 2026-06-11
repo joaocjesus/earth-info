@@ -65,6 +65,9 @@
           <dt>Area</dt><dd>{fmtNum(area, ' km²')}</dd>
           <dt>Density</dt><dd>{density != null ? fmtNum(density, ' /km²') : '—'}</dd>
         </dl>
+        {#if sel.locating}
+          <div class="verify"><span class="spinner"></span> Looking up local details…</div>
+        {/if}
       {/if}
       <button class="close" aria-label="Clear selection" onclick={clearSelection}>×</button>
     </div>

@@ -71,19 +71,26 @@ function islandFromGeo(geo) {
   return best?.name || null;
 }
 
-/** Best-effort: add nearby city + island names from reverse geocoding. */
+/**
+ * Best-effort: add nearby city + island names from reverse geocoding.
+ * Clears the `locating` flag when done so the card can stop its spinner.
+ */
 function enrichLocality(token, lat, lon) {
   reverseGeocode(lat, lon)
     .then((geo) => {
-      if (token !== selectToken || !geo) return;
-      const cityHint = geo.city || geo.locality || null;
-      const islandHint = islandFromGeo(geo);
-      if (!cityHint && !islandHint) return;
+      if (token !== selectToken) return;
+      const cityHint = geo?.city || geo?.locality || null;
+      const islandHint = geo ? islandFromGeo(geo) : null;
       selection.update((s) =>
-        s && s.status === 'ready' ? { ...s, cityHint, islandHint } : s
+        s && s.status === 'ready' ? { ...s, cityHint, islandHint, locating: false } : s
       );
     })
-    .catch(() => {});
+    .catch(() => {
+      if (token !== selectToken) return;
+      selection.update((s) =>
+        s && s.status === 'ready' ? { ...s, locating: false } : s
+      );
+    });
 }
 
 /** Click on the globe or coordinate-input submit. */
@@ -99,7 +106,8 @@ export async function selectAt(lat, lon) {
         lat, lon,
         status: 'ready',
         country: { name: { common: local.name || local.code }, cca2: local.code },
-        cityHint: null
+        cityHint: null,
+        locating: true
       });
       enrichCountry(token, local.code);
       enrichLocality(token, lat, lon);
