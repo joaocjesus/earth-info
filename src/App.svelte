@@ -1,19 +1,20 @@
 <script>
   import Scene from './lib/Scene.svelte';
-  import Controls from './lib/Controls.svelte';
-  import InfoCard from './lib/InfoCard.svelte';
+  import SidePanel from './lib/SidePanel.svelte';
   import ProgressWidget from './lib/ProgressWidget.svelte';
   import Toast from './lib/Toast.svelte';
   import Credits from './lib/Credits.svelte';
   import Settings from './lib/Settings.svelte';
+  import QualityDialog from './lib/QualityDialog.svelte';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { prefetchBase, warmScale, isCountriesCached, isMarineCached } from './lib/marinePolys.js';
-  import { vectorScale } from './lib/stores.js';
+  import { vectorScale, qualityChosen } from './lib/stores.js';
   import { getAllCountries } from './lib/api.js';
 
   let creditsOpen = $state(false);
   let settingsOpen = $state(false);
+  let qualityOpen = $state(!get(qualityChosen));
 
   onMount(async () => {
     getAllCountries().catch(() => {});  // warm country facts early
@@ -31,17 +32,19 @@
 
 <main>
   <Scene />
-  <Controls />
+  <SidePanel
+    onOpenSettings={() => (settingsOpen = true)}
+    onOpenCredits={() => (creditsOpen = true)}
+  />
   <ProgressWidget />
-  <InfoCard />
   <Toast />
-  <div class="hint">
-    Drag to rotate · Scroll to zoom · Click a country ·
-    <button class="link" onclick={() => (settingsOpen = true)}>Settings</button> ·
-    <button class="link" onclick={() => (creditsOpen = true)}>Credits</button>
-  </div>
+  <div class="hint">Drag to rotate · Scroll to zoom · Click the globe</div>
   <Credits open={creditsOpen} onClose={() => (creditsOpen = false)} />
   <Settings open={settingsOpen} onClose={() => (settingsOpen = false)} />
+  <QualityDialog
+    open={qualityOpen}
+    onClose={() => { qualityOpen = false; qualityChosen.set(true); }}
+  />
 </main>
 
 <style>
@@ -52,9 +55,4 @@
     background: rgba(10, 14, 24, 0.5); padding: 6px 10px; border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.05);
   }
-  .link {
-    background: none; border: none; padding: 0; cursor: pointer;
-    color: #80a8f5; font: inherit;
-  }
-  .link:hover { text-decoration: underline; }
 </style>

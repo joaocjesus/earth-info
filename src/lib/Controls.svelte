@@ -4,13 +4,12 @@
   import { getAllCountries } from './api.js';
   import { parseCoords } from './coords.js';
   import {
-    resolutionMode, moveCamera, showToast, showBorders, showOceanBorders
+    moveCamera, showToast, showBorders, showOceanBorders
   } from './stores.js';
   import { selectAt, selectCountryByCode, clearSelection } from './selection.js';
 
   let continent = $state('Europe');
   let countryCode = $state('');
-  let resolution = $state('2k');
   let coordsInput = $state('');
   let countries = $state([]);
   let loading = $state(true);
@@ -22,7 +21,8 @@
     try {
       const all = await getAllCountries();
       countries = all
-        .filter((c) => Array.isArray(c.continents) && c.continents.includes(forContinent))
+        .filter((c) => forContinent === 'all'
+          || (Array.isArray(c.continents) && c.continents.includes(forContinent)))
         .sort((a, b) => a.name.common.localeCompare(b.name.common));
     } catch {
       countries = [];
@@ -38,8 +38,10 @@
 
   function onContinentChange() {
     countryCode = '';
-    const c = CONTINENT_CENTROIDS[continent];
-    if (c) moveCamera(c.lat, c.lon, 3.0);
+    if (continent !== 'all') {
+      const c = CONTINENT_CENTROIDS[continent];
+      if (c) moveCamera(c.lat, c.lon, 3.0);
+    }
     clearSelection();
     loadCountries(continent);
   }
@@ -47,10 +49,6 @@
   function onCountryChange() {
     if (!countryCode) return;
     selectCountryByCode(countryCode);
-  }
-
-  function onResolutionChange() {
-    resolutionMode.set(resolution);
   }
 
   function onBordersChange() {
@@ -76,10 +74,13 @@
   }
 </script>
 
-<div class="controls">
+<section>
+  <h3>Explore</h3>
+
   <div class="group">
     <label for="continent">Continent</label>
     <select id="continent" bind:value={continent} onchange={onContinentChange}>
+      <option value="all">— All —</option>
       {#each CONTINENTS as c}
         <option value={c}>{c}</option>
       {/each}
@@ -101,16 +102,24 @@
   </div>
 
   <div class="group">
-    <label for="resolution">Map Texture</label>
-    <select id="resolution" bind:value={resolution} onchange={onResolutionChange}>
-      <option value="2k">Blue Marble Atmos (low — 2K)</option>
-      <option value="4k">Blue Marble Clear (high — 4K)</option>
-      <option value="8k">Solar System Scope (ultra — 8K)</option>
-    </select>
+    <label for="coords">Coordinates</label>
+    <div class="row">
+      <input
+        id="coords"
+        type="text"
+        bind:value={coordsInput}
+        onkeydown={onCoordsKey}
+        placeholder="48.8566, 2.3522"
+      />
+      <button class="go" onclick={goCoords}>Go</button>
+    </div>
   </div>
+</section>
+
+<section>
+  <h3>Display</h3>
 
   <div class="group">
-    <label for="borders">Overlay</label>
     <label class="toggle" for="borders">
       <input id="borders" type="checkbox" bind:checked={borders} onchange={onBordersChange} />
       <span>Country borders</span>
@@ -125,66 +134,54 @@
       <span>Ocean borders</span>
     </label>
   </div>
-
-  <div class="group wide">
-    <label for="coords">Coordinates</label>
-    <div class="row">
-      <input
-        id="coords"
-        type="text"
-        bind:value={coordsInput}
-        onkeydown={onCoordsKey}
-        placeholder="48.8566, 2.3522   or   48°51'N 2°21'E"
-      />
-      <button class="go" onclick={goCoords}>Go</button>
-    </div>
-  </div>
-</div>
+</section>
 
 <style>
-  .controls {
-    position: absolute; top: 16px; left: 16px; right: 16px;
-    display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
-    background: rgba(10, 14, 24, 0.72);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px; padding: 14px;
-    z-index: 10;
+  section {
+    padding: 14px 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
-  .group { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
-  .group.wide { flex: 1; min-width: 260px; }
+  h3 {
+    margin: 0 0 10px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6f7a96; font-weight: 600;
+  }
+  .group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .group:last-child { margin-bottom: 0; }
   label {
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
     color: #8b96b3; font-weight: 600;
   }
   select, input {
+    width: 100%; box-sizing: border-box;
     background: rgba(20, 26, 40, 0.92);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #e6e6e6;
-    padding: 9px 11px; border-radius: 8px; font-size: 13px;
-    outline: none; transition: border-color .15s, box-shadow .15s;
+    padding: 9px 11px; border-radius: 9px; font-size: 13px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
   }
   select:focus, input:focus {
     border-color: #5e8df0;
-    box-shadow: 0 0 0 3px rgba(94,141,240,0.18);
+    box-shadow: 0 0 0 3px rgba(94, 141, 240, 0.18);
   }
   .row { display: flex; gap: 6px; }
   .row input { flex: 1; min-width: 0; }
   .go {
-    background: #2d5cc0; color: white; border: none; border-radius: 8px;
+    background: #2d5cc0; color: white; border: none; border-radius: 9px;
     padding: 0 16px; font-weight: 600; cursor: pointer;
-    transition: background .15s; font-size: 13px;
+    transition: background 0.15s; font-size: 13px;
   }
   .go:hover { background: #3a6dd6; }
   .go:active { background: #244ea8; }
   .toggle {
     display: flex; align-items: center; gap: 8px;
-    padding: 9px 11px; border-radius: 8px;
+    padding: 9px 11px; border-radius: 9px;
     background: rgba(20, 26, 40, 0.92);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #e6e6e6; font-size: 13px; cursor: pointer;
     text-transform: none; letter-spacing: normal; font-weight: normal;
   }
-  .toggle input { margin: 0; cursor: pointer; accent-color: #5e8df0; }
+  .toggle input {
+    width: auto; margin: 0; cursor: pointer; accent-color: #5e8df0;
+  }
 </style>
