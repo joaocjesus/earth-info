@@ -106,8 +106,14 @@ export async function selectAt(lat, lon) {
       return;
     }
 
-    // No local hit — either ocean, or land the current vector scale is too
-    // coarse to carry (small islands at 110m). Geocode decides.
+    // No local hit — almost certainly ocean, but possibly land the current
+    // vector scale is too coarse to carry (Azores/Malta at 110m). Show the
+    // locally classified ocean immediately and let reverse geocoding
+    // double-check in the background; swap to the country if it finds one.
+    const ocean = await classifyOceanAt(lat, lon);
+    if (token !== selectToken) return;
+    selection.set({ lat, lon, status: 'ocean', ocean, verifying: true });
+
     let geo = null;
     try {
       geo = await reverseGeocode(lat, lon);
@@ -117,6 +123,7 @@ export async function selectAt(lat, lon) {
     if (token !== selectToken) return;
 
     if (geo && geo.countryCode) {
+      // Small island / coastal sliver below vector resolution.
       selection.set({
         lat, lon,
         status: 'ready',
@@ -131,9 +138,7 @@ export async function selectAt(lat, lon) {
       return;
     }
 
-    const ocean = await classifyOceanAt(lat, lon);
-    if (token !== selectToken) return;
-    selection.set({ lat, lon, status: 'ocean', ocean });
+    selection.update((s) => (s && s.status === 'ocean' ? { ...s, verifying: false } : s));
   } catch (err) {
     if (token !== selectToken) return;
     selection.set({ lat, lon, status: 'error', error: err?.message || String(err) });
