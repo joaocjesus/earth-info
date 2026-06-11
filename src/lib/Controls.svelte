@@ -26,6 +26,7 @@
         .sort((a, b) => a.name.common.localeCompare(b.name.common));
     } catch {
       countries = [];
+      showToast('Couldn’t load the country list. Check your connection and retry.');
     } finally {
       loading = false;
     }

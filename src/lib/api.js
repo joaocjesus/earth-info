@@ -1,6 +1,11 @@
 /**
- * Cached fetch helpers for REST Countries (countries metadata) and
- * BigDataCloud (reverse geocoding). Persists to localStorage with TTLs.
+ * Cached fetch helpers for countries metadata and BigDataCloud (reverse
+ * geocoding). Persists to localStorage with TTLs.
+ *
+ * The REST Countries v3.1 API was shut down (v5 requires an API key, which
+ * can't be kept secret in a client-only app), so countries come from the
+ * project's open-data dump — identical v3.1 record shape — served by CORS
+ * mirrors of their GitLab repo.
  */
 
 const COUNTRIES_KEY = 'ei_countries_v1';
@@ -22,6 +27,47 @@ function lsSet(k, v) {
 }
 
 /* ---------- Countries ---------- */
+const COUNTRIES_URLS = [
+  'https://glcdn.githack.com/restcountries/restcountries/-/raw/master/src/main/resources/countriesV3.1.json',
+  'https://cdn.statically.io/gl/restcountries/restcountries@master/src/main/resources/countriesV3.1.json'
+];
+
+// The dump ships every field (~1.4 MB); keep only what the app uses so the
+// localStorage cache stays small.
+function slimCountry(c) {
+  return {
+    name: { common: c.name?.common, official: c.name?.official },
+    cca2: c.cca2,
+    cca3: c.cca3,
+    capital: c.capital,
+    population: c.population,
+    area: c.area,
+    latlng: c.latlng,
+    continents: c.continents,
+    region: c.region,
+    flag: c.flag
+  };
+}
+
+async function fetchCountries() {
+  let lastErr;
+  for (const url of COUNTRIES_URLS) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) throw new Error(`countries fetch failed: ${res.status}`);
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('countries payload is not a list');
+      }
+      return data.map(slimCountry);
+    } catch (err) {
+      lastErr = err;
+      console.warn('countries source failed', url, err);
+    }
+  }
+  throw lastErr || new Error('all countries sources failed');
+}
+
 let countriesPromise = null;
 export function getAllCountries() {
   if (countriesPromise) return countriesPromise;
@@ -33,11 +79,7 @@ export function getAllCountries() {
   }
 
   countriesPromise = (async () => {
-    const res = await fetch(
-      'https://restcountries.com/v3.1/all?fields=name,cca2,cca3,capital,population,area,latlng,continents,region,flag'
-    );
-    if (!res.ok) throw new Error(`countries fetch failed: ${res.status}`);
-    const data = await res.json();
+    const data = await fetchCountries();
     lsSet(COUNTRIES_KEY, { ts: Date.now(), data });
     return data;
   })().catch((err) => {
@@ -92,7 +134,7 @@ export async function reverseGeocode(lat, lon) {
   if (hit && hit.ts && Date.now() - hit.ts < GEOCODE_TTL) return hit.data;
 
   const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`reverse geocode failed: ${res.status}`);
   const data = await res.json();
 

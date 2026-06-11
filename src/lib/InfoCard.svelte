@@ -3,8 +3,7 @@
   import { formatCoords } from './coords.js';
   import { clearSelection } from './selection.js';
 
-  let sel = $state(null);
-  selection.subscribe((v) => (sel = v));
+  let sel = $derived($selection);
 
   function fmtNum(n, suffix = '') {
     if (n == null || isNaN(n)) return '—';
@@ -44,11 +43,18 @@
       {@const pop = c.population}
       {@const area = c.area}
       {@const density = (pop && area) ? pop / area : null}
+      {@const island = sel.islandHint}
+      {@const countryName = c.name?.common || 'Unknown'}
       <div class="flag">{c.flag || ''}</div>
-      <h2>{c.name?.common || 'Unknown'}</h2>
+      <h2>{island || countryName}</h2>
       <div class="coords">{formatCoords(sel.lat, sel.lon)}</div>
-      {#if sel.cityHint}<div class="city">{sel.cityHint}</div>{/if}
+      {#if island}
+        <div class="city">Part of {countryName}{sel.cityHint ? ` · ${sel.cityHint}` : ''}</div>
+      {:else if sel.cityHint}
+        <div class="city">{sel.cityHint}</div>
+      {/if}
       <dl class="facts">
+        {#if island}<dt>Country</dt><dd>{countryName}</dd>{/if}
         <dt>Capital</dt><dd>{c.capital?.[0] || '—'}</dd>
         <dt>Region</dt><dd>{c.region || '—'}</dd>
         <dt>Population</dt><dd>{fmtNum(pop)}</dd>

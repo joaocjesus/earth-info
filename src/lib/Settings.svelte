@@ -4,6 +4,7 @@
     marineUrl, countriesUrl, isMarineCached, isCountriesCached
   } from './marinePolys.js';
   import { fetchCachedJson, clearVectorCache } from './geojsonCache.js';
+  import { trapFocus } from './focusTrap.js';
 
   let { open, onClose } = $props();
 
@@ -15,9 +16,6 @@
     { value: '10m',  label: '10m — High detail',
       note: 'Heavy (~30 MB total). Every small island, richest sea names.' }
   ];
-
-  let current = $state($vectorScale);
-  vectorScale.subscribe((v) => (current = v));
 
   let cached = $state(new Set());
   let busy = $state(null);          // scale currently downloading
@@ -38,7 +36,7 @@
     cached = set;
     // If the active scale isn't cached but 110m is, fall back so the UI
     // doesn't show a row that's "selected" yet uncached.
-    if (current !== '110m' && !set.has(current) && set.has('110m')) {
+    if ($vectorScale !== '110m' && !set.has($vectorScale) && set.has('110m')) {
       vectorScale.set('110m');
     }
   }
@@ -106,11 +104,14 @@
 <svelte:window onkeydown={onKey} />
 
 {#if open}
-  <div class="backdrop" onclick={close} role="presentation">
+  <div
+    class="backdrop"
+    onclick={(e) => { if (e.target === e.currentTarget) close(); }}
+    role="presentation"
+  >
     <div
       class="dialog"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
+      use:trapFocus
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
@@ -130,7 +131,7 @@
 
         <div class="scales">
           {#each SCALES as s}
-            {@const isActive = current === s.value}
+            {@const isActive = $vectorScale === s.value}
             {@const isCached = cached.has(s.value)}
             {@const isBusy = busy === s.value}
             <div class="scale" class:active={isActive}>

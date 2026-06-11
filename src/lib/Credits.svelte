@@ -1,4 +1,6 @@
 <script>
+  import { trapFocus } from './focusTrap.js';
+
   let { open, onClose } = $props();
 
   function close() { onClose?.(); }
@@ -8,11 +10,14 @@
 <svelte:window onkeydown={onKey} />
 
 {#if open}
-  <div class="backdrop" onclick={close} role="presentation">
+  <div
+    class="backdrop"
+    onclick={(e) => { if (e.target === e.currentTarget) close(); }}
+    role="presentation"
+  >
     <div
       class="dialog"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
+      use:trapFocus
       role="dialog"
       aria-modal="true"
       aria-label="Credits"
@@ -54,7 +59,11 @@
         <h3>Country data</h3>
         <ul>
           <li>
-            <a href="https://restcountries.com" target="_blank" rel="noreferrer">REST Countries</a>.
+            <a href="https://restcountries.com" target="_blank" rel="noreferrer">REST Countries</a>
+            open dataset (Mozilla Public License 2.0), served from their
+            <a href="https://gitlab.com/restcountries/restcountries" target="_blank" rel="noreferrer">GitLab repository</a>
+            via CDN mirror. Reverse geocoding by
+            <a href="https://www.bigdatacloud.com" target="_blank" rel="noreferrer">BigDataCloud</a>.
           </li>
         </ul>
 

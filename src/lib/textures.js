@@ -1,7 +1,5 @@
 import { TextureLoader, SRGBColorSpace } from 'three';
-import {
-  showProgress, setProgressPct, hideProgress, progressError
-} from './stores.js';
+import { showProgress, hideProgress, progressError } from './stores.js';
 
 // jsDelivr mirrors the three.js GitHub repo and always serves CORS headers.
 // NASA Visible Earth is a reliable public-domain fallback for higher tiers.
@@ -37,7 +35,7 @@ const cache = new Map(); // tier -> Promise<Texture>
 const loader = new TextureLoader();
 loader.setCrossOrigin('anonymous');
 
-function loadOne(url, onProgress) {
+function loadOne(url) {
   return new Promise((resolve, reject) => {
     loader.load(
       url,
@@ -45,9 +43,9 @@ function loadOne(url, onProgress) {
         tex.colorSpace = SRGBColorSpace;
         resolve(tex);
       },
-      (e) => {
-        if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
-      },
+      // TextureLoader never reports progress (ImageLoader limitation),
+      // so the progress UI runs in indeterminate mode instead.
+      undefined,
       () => reject(new Error(`failed to load ${url}`))
     );
   });
@@ -62,8 +60,8 @@ export function getTexture(tier) {
     let lastErr;
     for (const url of cfg.urls) {
       try {
-        showProgress(`Loading ${cfg.label} texture…`, 0);
-        const tex = await loadOne(url, (pct) => setProgressPct(pct));
+        showProgress(`Loading ${cfg.label} texture…`);
+        const tex = await loadOne(url);
         hideProgress(200);
         return tex;
       } catch (err) {
@@ -78,4 +76,9 @@ export function getTexture(tier) {
   cache.set(tier, p);
   p.catch(() => cache.delete(tier));
   return p;
+}
+
+/** Drop a tier from the cache (call after disposing its texture). */
+export function evictTexture(tier) {
+  cache.delete(tier);
 }

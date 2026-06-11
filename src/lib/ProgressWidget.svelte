@@ -1,7 +1,6 @@
 <script>
   import { progress } from './stores.js';
-  let p = $state({ visible: false, title: '', pct: null, error: false });
-  progress.subscribe((v) => (p = v));
+  let p = $derived($progress);
 
   let indeterminate = $derived(p.pct == null);
   let pctText = $derived(indeterminate ? '' : `${Math.round((p.pct ?? 0) * 100)}%`);

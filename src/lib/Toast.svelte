@@ -1,10 +1,8 @@
 <script>
   import { toast } from './stores.js';
-  let t = $state({ visible: false, message: '' });
-  toast.subscribe((v) => (t = v));
 </script>
 
-<div class="toast" class:visible={t.visible}>{t.message}</div>
+<div class="toast" class:visible={$toast.visible}>{$toast.message}</div>
 
 <style>
   .toast {

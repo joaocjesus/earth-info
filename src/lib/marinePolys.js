@@ -8,16 +8,25 @@ import { fetchCachedJson, isCached } from './geojsonCache.js';
 
 const BASE_SCALE = '110m';
 
-/** Make sure the smallest scale's data is cached locally. Idempotent. */
+/** Make sure the smallest scale's data is cached and parsed. Idempotent. */
 export async function prefetchBase() {
   try {
     await Promise.all([
-      fetchCachedJson(countriesUrl(BASE_SCALE)),
-      fetchCachedJson(marineUrl(BASE_SCALE))
+      loadPolys(countriesUrl(BASE_SCALE)),
+      loadPolys(marineUrl(BASE_SCALE))
     ]);
   } catch (err) {
     console.warn('base prefetch failed', err);
   }
+}
+
+/**
+ * Fetch + parse both vector files for a scale in the background, so the
+ * first click classifies from memory instead of paying download/parse cost.
+ */
+export function warmScale(scale) {
+  loadCountryPolys(scale).catch(() => {});
+  loadMarinePolys(scale).catch(() => {});
 }
 
 // Natural Earth ships marine polygons at 50m and 10m only — no 110m variant.
@@ -40,19 +49,49 @@ export function countriesUrl(scale) {
   return `${CDN}/ne_${scale}_admin_0_countries.geojson`;
 }
 
-const memCache = new Map();  // scale → parsed { features, bboxes }
+const memCache = new Map();  // url → Promise<{ features, bboxes }>
 
-export async function loadMarinePolys(scale) {
-  if (memCache.has(scale)) return memCache.get(scale);
-  const raw = await fetchCachedJson(marineUrl(scale));
-  const features = (raw.features || []).filter((f) => {
-    const t = f.geometry?.type;
-    return t === 'Polygon' || t === 'MultiPolygon';
-  });
-  const bboxes = features.map(featureBBox);
-  const parsed = { features, bboxes };
-  memCache.set(scale, parsed);
-  return parsed;
+// Caches the promise (not the result) so concurrent callers — startup
+// prefetch, a click, the borders overlay — share one fetch+parse.
+function loadPolys(url) {
+  if (memCache.has(url)) return memCache.get(url);
+  const p = (async () => {
+    const raw = await fetchCachedJson(url);
+    const features = (raw.features || []).filter((f) => {
+      const t = f.geometry?.type;
+      return t === 'Polygon' || t === 'MultiPolygon';
+    });
+    const bboxes = features.map(featureBBox);
+    return { features, bboxes };
+  })();
+  memCache.set(url, p);
+  p.catch(() => memCache.delete(url));
+  return p;
+}
+
+export function loadMarinePolys(scale) {
+  return loadPolys(marineUrl(scale));
+}
+
+export function loadCountryPolys(scale) {
+  return loadPolys(countriesUrl(scale));
+}
+
+/**
+ * Country code + display name from a Natural Earth admin-0 feature.
+ * ISO_A2 is '-99' for some countries (France, Norway — NE quirk); the _EH
+ * variants carry the real codes.
+ */
+export function countryFromFeature(f) {
+  if (!f) return null;
+  const p = f.properties || {};
+  const a2 = p.ISO_A2_EH || p.ISO_A2;
+  const a3 = p.ISO_A3_EH || p.ISO_A3 || p.ADM0_A3;
+  const code = /^[A-Za-z]{2}$/.test(a2 || '') ? a2
+    : /^[A-Za-z]{3}$/.test(a3 || '') ? a3
+    : null;
+  if (!code) return null;
+  return { code, name: p.NAME || p.ADMIN || null };
 }
 
 export async function isMarineCached(scale) {

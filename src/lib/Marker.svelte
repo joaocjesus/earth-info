@@ -13,7 +13,8 @@
   let pulse = 0;
   let ringRef = $state(null);
 
-  selection.subscribe((sel) => {
+  $effect(() => {
+    const sel = $selection;
     if (!sel || sel.status === 'error') {
       visible = false;
       return;
@@ -24,9 +25,9 @@
     pulse = 0;
   });
 
-  useTask(() => {
+  useTask((delta) => {
     if (!visible) return;
-    pulse += 0.04;
+    pulse += delta * 2.4;  // time-based so refresh rate doesn't change speed
     ringScale = 1 + Math.sin(pulse) * 0.25;
     ringOpacity = 0.45 + 0.35 * (1 + Math.cos(pulse)) * 0.5;
     if (ringRef && camera.current) ringRef.lookAt(camera.current.position);

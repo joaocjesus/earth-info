@@ -90,8 +90,10 @@ export function oceanFromFeature(feature) {
   const featurecla = props.featurecla || null;
   const facts = parentOceanFacts(name);
   if (facts) {
-    // Top-level ocean name itself → use facts as primary.
-    if (/^(north|south)?\s*(pacific|atlantic|indian|southern|arctic)\s*ocean$/i.test(name)) {
+    // Exact ocean name → use facts as primary. "North Atlantic Ocean" etc.
+    // fall through to the sea branch so the specific name is kept and the
+    // whole-ocean area/depth numbers aren't misattributed to one half.
+    if (/^(pacific|atlantic|indian|southern|arctic)\s+ocean$/i.test(name.trim())) {
       return { name: facts.parent, featurecla, info: facts.info,
         area: facts.area, avgDepthM: facts.avgDepthM,
         maxDepthM: facts.maxDepthM, maxDepthName: facts.maxDepthName };

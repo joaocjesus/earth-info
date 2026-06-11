@@ -8,19 +8,24 @@
   import Settings from './lib/Settings.svelte';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { prefetchBase, isCountriesCached, isMarineCached } from './lib/marinePolys.js';
+  import { prefetchBase, warmScale, isCountriesCached, isMarineCached } from './lib/marinePolys.js';
   import { vectorScale } from './lib/stores.js';
+  import { getAllCountries } from './lib/api.js';
 
   let creditsOpen = $state(false);
   let settingsOpen = $state(false);
 
   onMount(async () => {
+    getAllCountries().catch(() => {});  // warm country facts early
     await prefetchBase();
     const scale = get(vectorScale);
     if (scale !== '110m') {
       const ok = (await isCountriesCached(scale)) && (await isMarineCached(scale));
       if (!ok) vectorScale.set('110m');
     }
+    // Warm the active scale now and any scale the user switches to later,
+    // so clicks classify from memory.
+    vectorScale.subscribe((s) => warmScale(s));
   });
 </script>
 

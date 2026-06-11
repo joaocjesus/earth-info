@@ -1,18 +1,24 @@
 <script>
   /**
    * Listens to the `cameraTarget` store and smoothly slerps the camera to
-   * face the requested lat/lon at the requested distance.
+   * face the requested lat/lon at the requested distance. OrbitControls are
+   * disabled while animating so their damping doesn't fight the slerp.
    */
   import { useTask, useThrelte } from '@threlte/core';
   import { MathUtils } from 'three';
   import { latLonToVec3 } from './coords.js';
   import { cameraTarget } from './stores.js';
 
+  let { controls = null } = $props();
+
   const { camera, invalidate } = useThrelte();
 
   let anim = null;
   let firstSubscribe = true;
 
+  // Intentionally a manual subscription rather than $effect: an effect would
+  // also re-run when the `controls` prop binds, kicking off a spurious
+  // animation at startup.
   cameraTarget.subscribe((target) => {
     if (!camera.current) return;
     // On first subscribe, snap to the initial position rather than animating
@@ -30,6 +36,7 @@
     const targetDir = latLonToVec3(target.lat, target.lon).normalize();
     const dot = MathUtils.clamp(startDir.dot(targetDir), -1, 1);
     const theta = Math.acos(dot);
+    if (controls) controls.enabled = false;
     anim = {
       startDir,
       startLen,
@@ -58,6 +65,12 @@
     }
     const len = anim.startLen * (1 - e) + anim.targetLen * e;
     camera.current.position.copy(dir.multiplyScalar(len));
-    if (t >= 1) anim = null;
+    if (t >= 1) {
+      anim = null;
+      if (controls) {
+        controls.enabled = true;
+        controls.update?.();
+      }
+    }
   });
 </script>
