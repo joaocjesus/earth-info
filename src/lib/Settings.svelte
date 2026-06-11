@@ -35,11 +35,6 @@
       if (a && b) set.add(s.value);
     }
     cached = set;
-    // If the active scale isn't cached but 110m is, fall back so the UI
-    // doesn't show a row that's "selected" yet uncached.
-    if ($vectorScale !== '110m' && !set.has($vectorScale) && set.has('110m')) {
-      vectorScale.set('110m');
-    }
   }
   $effect(() => { if (open) refreshCached(); });
 

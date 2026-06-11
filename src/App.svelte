@@ -8,7 +8,7 @@
   import QualityDialog from './lib/QualityDialog.svelte';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { prefetchBase, warmScale, isCountriesCached, isMarineCached } from './lib/marinePolys.js';
+  import { prefetchBase, warmScale } from './lib/marinePolys.js';
   import { vectorScale, qualityChosen } from './lib/stores.js';
   import { getAllCountries } from './lib/api.js';
 
@@ -19,13 +19,8 @@
   onMount(async () => {
     getAllCountries().catch(() => {});  // warm country facts early
     await prefetchBase();
-    const scale = get(vectorScale);
-    if (scale !== '110m') {
-      const ok = (await isCountriesCached(scale)) && (await isMarineCached(scale));
-      if (!ok) vectorScale.set('110m');
-    }
-    // Warm the active scale now and any scale the user switches to later,
-    // so clicks classify from memory.
+    // Warm the active scale now (downloading it on first run) and any scale
+    // the user switches to later, so clicks classify from memory.
     vectorScale.subscribe((s) => warmScale(s));
   });
 </script>

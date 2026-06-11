@@ -62,7 +62,7 @@ export const showOceanBorders = writable(false);
 
 /** Natural Earth vector detail level used for borders and ocean classification. */
 const SCALE_KEY = 'ei_vector_scale';
-const SCALE_DEFAULT = '110m';
+const SCALE_DEFAULT = '10m';
 const SCALE_VALID = new Set(['110m', '50m', '10m']);
 function loadScale() {
   try {

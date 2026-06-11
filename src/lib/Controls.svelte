@@ -8,7 +8,7 @@
   } from './stores.js';
   import { selectAt, selectCountryByCode, clearSelection } from './selection.js';
 
-  let continent = $state('Europe');
+  let continent = $state('all');
   let countryCode = $state('');
   let coordsInput = $state('');
   let countries = $state([]);
