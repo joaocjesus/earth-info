@@ -6,8 +6,13 @@
 
   const { camera, invalidate } = useThrelte();
 
+  // World scale per unit of camera distance — keeps the pin the same
+  // apparent size on screen at any zoom (≈ current look at distance 2.6).
+  const SCREEN_SCALE = 0.385;
+
   let visible = $state(false);
   let position = $state([0, 0, 0]);
+  let zoomScale = $state(1);
   let ringScale = $state(1);
   let ringOpacity = $state(0.8);
   let pulse = 0;
@@ -26,22 +31,29 @@
   });
 
   useTask((delta) => {
-    if (!visible) return;
+    if (!visible || !camera.current) return;
     pulse += delta * 2.4;  // time-based so refresh rate doesn't change speed
     ringScale = 1 + Math.sin(pulse) * 0.25;
     ringOpacity = 0.45 + 0.35 * (1 + Math.cos(pulse)) * 0.5;
-    if (ringRef && camera.current) ringRef.lookAt(camera.current.position);
+    const cam = camera.current.position;
+    const dx = cam.x - position[0];
+    const dy = cam.y - position[1];
+    const dz = cam.z - position[2];
+    zoomScale = Math.sqrt(dx * dx + dy * dy + dz * dz) * SCREEN_SCALE;
+    if (ringRef) ringRef.lookAt(cam);
     invalidate?.();
   });
 </script>
 
 {#if visible}
-  <T.Mesh {position}>
-    <T.SphereGeometry args={[0.014, 16, 16]} />
-    <T.MeshBasicMaterial color={new Color(0xff5e5e)} />
-  </T.Mesh>
-  <T.Mesh bind:ref={ringRef} {position} scale={[ringScale, ringScale, ringScale]}>
-    <T.RingGeometry args={[0.022, 0.032, 32]} />
-    <T.MeshBasicMaterial color={new Color(0xff5e5e)} side={DoubleSide} transparent opacity={ringOpacity} />
-  </T.Mesh>
+  <T.Group {position} scale={[zoomScale, zoomScale, zoomScale]}>
+    <T.Mesh>
+      <T.SphereGeometry args={[0.014, 16, 16]} />
+      <T.MeshBasicMaterial color={new Color(0xff5e5e)} />
+    </T.Mesh>
+    <T.Mesh bind:ref={ringRef} scale={[ringScale, ringScale, ringScale]}>
+      <T.RingGeometry args={[0.022, 0.032, 32]} />
+      <T.MeshBasicMaterial color={new Color(0xff5e5e)} side={DoubleSide} transparent opacity={ringOpacity} />
+    </T.Mesh>
+  </T.Group>
 {/if}
