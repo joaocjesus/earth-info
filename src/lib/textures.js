@@ -1,23 +1,20 @@
 import { TextureLoader, SRGBColorSpace } from 'three';
 import { showProgress, hideProgress, progressError } from './stores.js';
 
-// jsDelivr mirrors the three.js GitHub repo and always serves CORS headers.
-// NASA Visible Earth is a reliable public-domain fallback for higher tiers.
-// All sources are equirectangular (2:1) Earth daymaps served with CORS.
+// Both tiers are the same Solar System Scope daymap (CC BY 4.0) so the
+// 2K → 8K background upgrade changes sharpness only, never the look.
+// The 2K is a byte-identical mirror of solarsystemscope.com's download
+// (their server doesn't send CORS headers; the mirror + githack do).
+// The three.js example texture is a last-resort fallback — different
+// color grading, but better than an untextured globe.
 export const TEXTURE_TIERS = {
   '2k': {
     label: '2K',
     size: 2048,
     urls: [
-      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/planets/earth_atmos_2048.jpg',
-      'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
-    ]
-  },
-  '4k': {
-    label: '4K',
-    size: 4096,
-    urls: [
-      'https://cdn.jsdelivr.net/gh/turban/webgl-earth@master/images/2_no_clouds_4k.jpg'
+      'https://cdn.jsdelivr.net/gh/matheusflc/SistemaSolar@master/texturas/2k_earth_daymap.jpg',
+      'https://rawcdn.githack.com/matheusflc/SistemaSolar/master/texturas/2k_earth_daymap.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/planets/earth_atmos_2048.jpg'
     ]
   },
   '8k': {
@@ -28,8 +25,6 @@ export const TEXTURE_TIERS = {
     ]
   }
 };
-
-export const TIER_ORDER = ['2k', '4k', '8k'];
 
 const cache = new Map(); // tier -> Promise<Texture>
 const loader = new TextureLoader();

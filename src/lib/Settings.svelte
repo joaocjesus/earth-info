@@ -1,9 +1,10 @@
 <script>
-  import { vectorScale } from './stores.js';
+  import { vectorScale, textureQuality, currentTier } from './stores.js';
   import {
     marineUrl, countriesUrl, isMarineCached, isCountriesCached
   } from './marinePolys.js';
   import { fetchCachedJson, clearVectorCache } from './geojsonCache.js';
+  import { clearApiCaches } from './api.js';
   import { trapFocus } from './focusTrap.js';
 
   let { open, onClose } = $props();
@@ -97,6 +98,12 @@
     if (!cached.has('110m') && !busy) fetchScale('110m');
   }
 
+  /** Map data plus cached country facts and geocoding results. */
+  async function clearEverything() {
+    clearApiCaches();
+    await clearAll();
+  }
+
   function close() { onClose?.(); }
   function onKey(e) { if (e.key === 'Escape' && open) close(); }
 </script>
@@ -121,6 +128,38 @@
         <h2>Settings</h2>
         <button class="x" onclick={close} aria-label="Close">×</button>
       </header>
+
+      <section>
+        <h3>Graphics quality</h3>
+        <p class="muted">
+          Same Earth imagery in both modes — only sharpness and download
+          size differ.
+        </p>
+        <div class="scales">
+          <label class="scale choice-row" class:active={$textureQuality === 'auto'}>
+            <input type="radio" name="quality" value="auto" bind:group={$textureQuality} />
+            <div class="scale-body">
+              <div class="scale-title">Auto — sharp 8K</div>
+              <div class="scale-note">
+                Quick 2K preview, then the full 8K texture (~5 MB) loads in
+                the background.
+              </div>
+            </div>
+          </label>
+          <label class="scale choice-row" class:active={$textureQuality === 'low'}>
+            <input type="radio" name="quality" value="low" bind:group={$textureQuality} />
+            <div class="scale-body">
+              <div class="scale-title">Lite — 2K only</div>
+              <div class="scale-note">
+                Lightest on memory and GPU. Best for low-spec machines.
+              </div>
+            </div>
+          </label>
+        </div>
+        <p class="muted tier">
+          Currently shown: {$currentTier ? $currentTier.toUpperCase() : 'loading…'}
+        </p>
+      </section>
 
       <section>
         <h3>Vector data detail</h3>
@@ -174,8 +213,11 @@
         {/if}
 
         <div class="footer">
-          <button class="mini danger" onclick={clearAll} disabled={clearing || !!busy}>
-            Clear all cached map data
+          <button class="mini" onclick={clearAll} disabled={clearing || !!busy}>
+            Clear cached map data
+          </button>
+          <button class="mini danger" onclick={clearEverything} disabled={clearing || !!busy}>
+            Clear all cache
           </button>
         </div>
       </section>
@@ -210,7 +252,13 @@
     color: #8b96b3; font-weight: 600;
   }
   section { padding: 16px 20px 20px; font-size: 13px; line-height: 1.55; }
+  section + section { border-top: 1px solid rgba(255,255,255,0.07); }
   .muted { color: #8b96b3; margin: 0 0 14px; }
+  .muted.tier { margin: 10px 0 0; font-size: 12px; }
+  .choice-row { cursor: pointer; }
+  .choice-row input {
+    margin: 0 2px 0 0; cursor: pointer; accent-color: #5e8df0; flex-shrink: 0;
+  }
 
   .scales { display: flex; flex-direction: column; gap: 8px; }
   .scale {
@@ -278,14 +326,18 @@
 
   .mini {
     font-size: 12px; padding: 6px 10px; border-radius: 6px;
-    background: rgba(255,126,126,0.12); color: #ffb0b0;
-    border: 1px solid rgba(255,126,126,0.35); cursor: pointer;
+    background: rgba(255,255,255,0.06); color: #b8c2d8;
+    border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
   }
-  .mini:hover:not(:disabled) { background: rgba(255,126,126,0.2); }
+  .mini:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
   .mini:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mini.danger { /* shared with .mini above */ }
+  .mini.danger {
+    background: rgba(255,126,126,0.12); color: #ffb0b0;
+    border-color: rgba(255,126,126,0.35);
+  }
+  .mini.danger:hover:not(:disabled) { background: rgba(255,126,126,0.2); }
 
-  .footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+  .footer { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
   .x {
     background: transparent; border: none; color: #8b96b3;
     font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px;

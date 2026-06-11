@@ -32,18 +32,15 @@
         <h3>Earth textures</h3>
         <ul>
           <li>
-            <b>2K — Blue Marble Atmos</b> · NASA Visible Earth (public domain), via
-            <a href="https://github.com/mrdoob/three.js" target="_blank" rel="noreferrer">three.js</a> examples (MIT).
-          </li>
-          <li>
-            <b>4K — Blue Marble Clear</b> · NASA Blue Marble Next Generation (public domain), via
-            <a href="https://github.com/turban/webgl-earth" target="_blank" rel="noreferrer">turban/webgl-earth</a> (MIT).
-          </li>
-          <li>
-            <b>8K — Solar System Scope</b> · ©
+            <b>2K & 8K daymaps</b> · ©
             <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">Solar System Scope</a>,
             licensed under
-            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
+            (8K served via Wikimedia Commons).
+          </li>
+          <li>
+            <b>Fallback 2K</b> · NASA Visible Earth (public domain), via
+            <a href="https://github.com/mrdoob/three.js" target="_blank" rel="noreferrer">three.js</a> examples (MIT).
           </li>
         </ul>
 

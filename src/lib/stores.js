@@ -20,8 +20,38 @@ export const selection = writable(null);
 // selection shape: { lat, lon, status: 'loading' | 'ocean' | 'ready' | 'error',
 //   country?, cityHint?, error? }
 
-/** Texture mode controls. */
-export const resolutionMode = writable('2k'); // '2k' | '4k' | '8k'
+/**
+ * Texture quality preference, persisted.
+ *  - 'auto': show 2K immediately, upgrade to 8K in the background
+ *  - 'low':  2K only — for low-spec machines / slow connections
+ */
+const QUALITY_KEY = 'ei_texture_quality';
+function loadQuality() {
+  try {
+    const v = localStorage.getItem(QUALITY_KEY);
+    return v === 'low' || v === 'auto' ? v : 'auto';
+  } catch { return 'auto'; }
+}
+export const textureQuality = writable(loadQuality());
+textureQuality.subscribe((v) => {
+  try { localStorage.setItem(QUALITY_KEY, v); } catch {}
+});
+
+/**
+ * Whether the user has confirmed a quality choice (first-run dialog).
+ * Until then the 8K background upgrade is held back, so picking Lite
+ * never wastes the 5 MB download. Fails open if localStorage is blocked.
+ */
+const CHOSEN_KEY = 'ei_quality_chosen';
+function loadChosen() {
+  try { return localStorage.getItem(CHOSEN_KEY) === '1'; } catch { return true; }
+}
+export const qualityChosen = writable(loadChosen());
+qualityChosen.subscribe((v) => {
+  if (v) { try { localStorage.setItem(CHOSEN_KEY, '1'); } catch {} }
+});
+
+/** Tier currently shown on the globe ('2k' | '8k' | null while loading). */
 export const currentTier = writable(null);
 
 /** Toggle for country border overlay. */

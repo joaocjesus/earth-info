@@ -3,7 +3,7 @@
   import { Color, MeshPhongMaterial } from 'three';
   import { EARTH_RADIUS, vec3ToLatLon } from './coords.js';
   import { getTexture, evictTexture } from './textures.js';
-  import { resolutionMode, currentTier } from './stores.js';
+  import { textureQuality, qualityChosen, currentTier } from './stores.js';
   import { selectAt } from './selection.js';
 
   const threlte = useThrelte();
@@ -32,6 +32,7 @@
         const want = desiredTier;
         try {
           const tex = await getTexture(want);
+          if (desiredTier !== want) continue;  // superseded mid-download
           const aniso = getMaxAnisotropy();
           if (tex.anisotropy !== aniso) {
             tex.anisotropy = aniso;
@@ -57,9 +58,14 @@
     }
   }
 
+  // 'auto': request 2K then immediately queue 8K — the load loop applies 2K
+  // for a fast first paint, then upgrades in the background. 'low': 2K only
+  // (and switching down later disposes + evicts the 8K). The 8K download is
+  // held until the first-run dialog is answered.
   $effect(() => {
-    const mode = $resolutionMode;
-    if (mode) requestTier(mode);
+    const quality = $textureQuality;
+    requestTier('2k');
+    if (quality === 'auto' && $qualityChosen) requestTier('8k');
   });
 
   // Distinguish clicks from orbit drags: ignore pointer travel beyond ~6 px.

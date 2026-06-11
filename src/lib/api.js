@@ -128,6 +128,14 @@ function geocodeKey(lat, lon) {
   return `${lat.toFixed(1)},${lon.toFixed(1)}`;
 }
 
+/** Drop cached countries + geocode results (storage and in-memory). */
+export function clearApiCaches() {
+  try { localStorage.removeItem(COUNTRIES_KEY); } catch {}
+  try { localStorage.removeItem(GEOCODE_KEY); } catch {}
+  countriesPromise = null;
+  geocodeCache = {};
+}
+
 export async function reverseGeocode(lat, lon) {
   const k = geocodeKey(lat, lon);
   const hit = geocodeCache[k];
