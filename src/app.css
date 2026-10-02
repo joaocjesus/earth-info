@@ -1,13 +1,57 @@
-*, *::before, *::after { box-sizing: border-box; }
-
-html, body, #app {
-  margin: 0; padding: 0;
-  width: 100%; height: 100%;
-  overflow: hidden;
-  background: #05070d;
-  color: #e6e6e6;
+:root {
+  color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  --bg: #070c12;
+  --surface: #101a24;
+  --surface-raised: #15222e;
+  --text: #edf3f6;
+  --muted: #9aaebb;
+  --subtle: #7e949f;
+  --accent: #9be3cf;
+  --accent-soft: rgba(155, 227, 207, 0.09);
+  --line: rgba(187, 213, 226, 0.12);
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --panel-width: 328px;
 }
 
-button { font-family: inherit; }
-select, input { font-family: inherit; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #app { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); }
+button, select, input { font: inherit; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button:disabled { cursor: not-allowed; }
+button svg { flex-shrink: 0; }
+::selection { background: #9be3cf; color: #0c211c; }
+
+/* A shared surface treatment keeps every dialog part of the same atlas. */
+.backdrop {
+  background: rgba(3, 8, 13, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 16px 0;
+}
+.dialog {
+  background: #101a24;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--text);
+}
+.dialog:focus { outline: none; }
+.dialog .x { min-width: 36px; min-height: 36px; }
+.dialog a { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

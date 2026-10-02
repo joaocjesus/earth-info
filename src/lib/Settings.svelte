@@ -222,17 +222,14 @@
 
 <style>
   .backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    z-index: 100; backdrop-filter: blur(4px);
+    z-index: 100;
   }
   .dialog {
-    background: rgba(14, 18, 30, 0.96);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
     max-width: 560px; width: calc(100% - 32px);
     max-height: 85vh; overflow: auto;
-    color: #e6e6e6;
+    color: var(--text);
     box-shadow: 0 30px 80px rgba(0,0,0,0.5);
   }
   header {
@@ -244,28 +241,28 @@
   h3 {
     margin: 4px 0 6px;
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: #8b96b3; font-weight: 600;
+    color: var(--muted); font-weight: 600;
   }
   section { padding: 16px 20px 20px; font-size: 13px; line-height: 1.55; }
   section + section { border-top: 1px solid rgba(255,255,255,0.07); }
-  .muted { color: #8b96b3; margin: 0 0 14px; }
+  .muted { color: var(--muted); margin: 0 0 14px; }
   .muted.tier { margin: 10px 0 0; font-size: 12px; }
   .choice-row { cursor: pointer; }
   .choice-row input {
-    margin: 0 2px 0 0; cursor: pointer; accent-color: #5e8df0; flex-shrink: 0;
+    margin: 0 2px 0 0; cursor: pointer; accent-color: var(--accent); flex-shrink: 0;
   }
 
   .scales { display: flex; flex-direction: column; gap: 8px; }
   .scale {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 14px; border-radius: 10px;
-    background: rgba(20, 26, 40, 0.7);
+    background: var(--surface-raised);
     border: 1px solid rgba(255,255,255,0.08);
   }
-  .scale.active { border-color: #5e8df0; background: rgba(94,141,240,0.1); }
+  .scale.active { border-color: var(--accent); background: var(--accent-soft); }
   .scale-body { flex: 1; min-width: 0; }
   .scale-title { font-weight: 600; margin-bottom: 4px; }
-  .scale-note { color: #8b96b3; font-size: 12px; }
+  .scale-note { color: var(--muted); font-size: 12px; }
   .scale-action { flex-shrink: 0; min-width: 110px; text-align: right; }
   .state {
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
@@ -279,27 +276,27 @@
   }
   .btn:disabled:not(.downloading) { opacity: 0.6; cursor: not-allowed; }
   .btn.download {
-    background: #2d5cc0; color: white; border: 1px solid #2d5cc0;
+    background: var(--accent); color: #122d25; border: 1px solid var(--accent);
   }
-  .btn.download:hover:not(:disabled) { background: #3a6dd6; border-color: #3a6dd6; }
+  .btn.download:hover:not(:disabled) { background: #bdf1e1; border-color: #bdf1e1; }
   .btn.select {
-    background: rgba(94,141,240,0.15); color: #b9cdf5;
-    border: 1px solid rgba(94,141,240,0.45);
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid #9be3cf66;
   }
-  .btn.select:hover:not(:disabled) { background: rgba(94,141,240,0.28); }
+  .btn.select:hover:not(:disabled) { background: #9be3cf26; }
 
   .btn.downloading {
     position: relative; overflow: hidden;
-    background: rgba(94,141,240,0.15); color: #cfe0ff;
-    border: 1px solid rgba(94,141,240,0.6);
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid #9be3cf88;
     cursor: progress; opacity: 1;
   }
   .btn.downloading::before {
     content: ''; position: absolute; inset: 0;
     width: var(--progress, 0%);
     background: linear-gradient(90deg,
-      rgba(94,141,240,0.45) 0%,
-      rgba(94,141,240,0.65) 100%);
+      rgba(155,227,207,0.2) 0%,
+      rgba(155,227,207,0.4) 100%);
     transition: width .12s linear;
   }
   .btn.downloading .lbl {
@@ -309,7 +306,7 @@
   .btn.downloading .lbl::before {
     content: ''; display: inline-block;
     width: 8px; height: 8px; border-radius: 50%;
-    background: #b9cdf5;
+    background: var(--accent);
     animation: pulse 1s ease-in-out infinite;
   }
   @keyframes pulse {
@@ -334,8 +331,13 @@
 
   .footer { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
   .x {
-    background: transparent; border: none; color: #8b96b3;
+    background: transparent; border: none; color: var(--muted);
     font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px;
   }
-  .x:hover { color: #e6e6e6; }
+  .x:hover { color: var(--text); }
+  @media (max-width: 480px) {
+    .scale:not(.choice-row) { align-items: flex-start; flex-direction: column; }
+    .scale-action { text-align: left; }
+    .footer { flex-wrap: wrap; justify-content: flex-start; }
+  }
 </style>

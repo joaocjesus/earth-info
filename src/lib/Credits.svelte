@@ -77,17 +77,14 @@
 
 <style>
   .backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    z-index: 100; backdrop-filter: blur(4px);
+    z-index: 100;
   }
   .dialog {
-    background: rgba(14, 18, 30, 0.96);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
     max-width: 560px; width: calc(100% - 32px);
     max-height: 80vh; overflow: auto;
-    color: #e6e6e6;
+    color: var(--text);
     box-shadow: 0 30px 80px rgba(0,0,0,0.5);
   }
   header {
@@ -99,16 +96,16 @@
   h3 {
     margin: 18px 0 6px;
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: #8b96b3; font-weight: 600;
+    color: var(--muted); font-weight: 600;
   }
   section { padding: 8px 20px 20px; font-size: 13px; line-height: 1.55; }
   ul { margin: 0; padding-left: 18px; }
   li { margin: 4px 0; }
-  a { color: #80a8f5; text-decoration: none; }
+  a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .x {
-    background: transparent; border: none; color: #8b96b3;
+    background: transparent; border: none; color: var(--muted);
     font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px;
   }
-  .x:hover { color: #e6e6e6; }
+  .x:hover { color: var(--text); }
 </style>

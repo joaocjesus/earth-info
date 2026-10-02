@@ -7,7 +7,7 @@
   let barStyle = $derived(indeterminate ? '' : `width: ${((p.pct ?? 0) * 100).toFixed(1)}%`);
 </script>
 
-<div class="progress" class:visible={p.visible} class:error={p.error} class:indeterminate>
+<div role="status" aria-live="polite" class="progress" class:visible={p.visible} class:error={p.error} class:indeterminate>
   <div class="label">
     <span class="title">{p.title}</span>
     <span class="pct">{pctText}</span>
@@ -17,9 +17,9 @@
 
 <style>
   .progress {
-    position: absolute; top: 16px; right: 16px;
+    position: absolute; bottom: 80px; right: 28px;
     min-width: 220px; max-width: 280px;
-    background: rgba(10, 14, 24, 0.85);
+    background: rgba(14, 23, 32, 0.95);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255,255,255,0.08);
@@ -42,7 +42,7 @@
   }
   .bar > div {
     height: 100%;
-    background: linear-gradient(90deg, #5e8df0, #7eb0ff);
+    background: var(--accent);
     width: 0%;
     transition: width .15s ease;
   }
@@ -54,5 +54,8 @@
   @keyframes indet {
     0%   { transform: translateX(-100%); }
     100% { transform: translateX(285%); }
+  }
+  @media (max-width: 700px), (max-width: 900px) and (orientation: portrait) {
+    .progress { bottom: auto; top: 83px; right: 18px; min-width: 180px; max-width: 220px; }
   }
 </style>

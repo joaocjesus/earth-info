@@ -32,7 +32,9 @@
         const want = desiredTier;
         try {
           const tex = await getTexture(want);
-          if (desiredTier !== want) continue;  // superseded mid-download
+          // Keep the quick preview visible while a queued 8K upgrade loads.
+          // Later superseded requests must not replace the active texture.
+          if (desiredTier !== want && !(want === '2k' && !activeTier)) continue;
           const aniso = getMaxAnisotropy();
           if (tex.anisotropy !== aniso) {
             tex.anisotropy = aniso;
